@@ -1,0 +1,75 @@
+server:
+  port: 8003
+
+
+dbserver:
+  mysql:
+    host: localhost
+    username: root
+    password: 123456
+    port: 30306
+    databases: db_test
+
+# mybatis相关
+mybatis:
+  type-aliases-package: com.fei.springcloud.pojo.CompanyTbl
+  mapper-locations: classpath:mybatis/mapper/*.xml
+  config-location: classpath:mybatis/mybatis-config.xml
+
+
+spring:
+  application:
+    name: spring-cloud-provider
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#    username: ${dbserver.mysql.username}
+#    password: ${dbserver.mysql.password}
+#    url: jdbc:mysql://${dbserver.mysql.host}:${dbserver.mysql.port}/${dbserver.mysql.databases}?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&serverTimezone=UTC
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      username: ${dbserver.mysql.username}
+      password: ${dbserver.mysql.password}
+      url: jdbc:mysql://${dbserver.mysql.host}:${dbserver.mysql.port}/${dbserver.mysql.databases}?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&serverTimezone=UTC
+      #监控统计拦截的filters
+      filters: stat
+      #配置初始化大小/最小/最大
+      initial-size: 1
+      min-idle: 1
+      max-active: 20
+      #获取连接等待超时时间
+      max-wait: 60000
+      #间隔多久进行一次检测，检测需要关闭的空闲连接
+      time-between-eviction-runs-millis: 60000
+      #一个连接在池中最小生存的时间
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 'x'
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      #打开PSCache，并指定每个连接上PSCache的大小。oracle设为true，mysql设为false。分库分表较多推荐设置为false
+      pool-prepared-statements: false
+      max-pool-prepared-statement-per-connection-size: 20
+
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka

@@ -1,0 +1,28 @@
+server:
+  port: 7003
+
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+    port:
+      port1: 7001
+      port2: 7002
+
+spring:
+  application:
+    name: spring-cloud-eureka-03
+eureka:
+  instance:
+    hostname: eureka-server3
+  client:
+    register-with-eureka: false #false表示不向注册中心注册自己。
+    fetch-registry: false #false表示自己端就是注册中心，我的职责就是维护服务实例，并不需要去检索服务
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka
+  server:
+    #开启注册中心的保护机制，默认是开启
+    enable-self-preservation: true
+    #设置保护机制的阈值，默认是0.85。
+    renewal-percent-threshold: 0.85

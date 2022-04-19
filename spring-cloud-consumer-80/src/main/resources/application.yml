@@ -1,0 +1,38 @@
+server:
+  port: 80
+
+spring:
+  application:
+    name: spring-cloud-consumer
+
+#eureka配置相关
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+
+
+ribbon:
+  #配置饥饿加载 在启动时候就全部把client加载好，默认是第一次请求的时候去创建
+  eager-load:
+    enabled: true
+    clients: thread-produce
+

@@ -1,0 +1,56 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: spring-cloud-consumer
+
+#eureka配置相关
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+
+
+# feign 调用相关
+#feign:
+#  client:
+#    spring-cloud-provider:
+#      #相当于Request.Options
+#      connectTimeout: 5000
+#      #相当于Request.Options
+#      readTimeout: 5000
+#      #配置Feign的日志级别，相当于代码配置方式中的Logger
+#      loggerLevel: full
+#      #Feign的错误解码器,相当于代码配置中的ErrorDecoder
+#      errorDecoder: com.example.SimpleErrorDecoder
+#      #配置重试,相当于代码配置方式中的Retryer
+#      retryer: com.example.SimpleRetryer
+#      decode404: false
+#    config:
+#      #为单独的服务配置Feign配置 (这里的名字是你的服务的名字)
+#      spring-cloud-provider:
+#        loggerLevel: full #配置Feign日志 为full
+#      #配置全局的Feign配置
+#      default:
+#        loggerLevel: BASIC
+#  #feign配置文件的方式比java配置优先级要高,如果想java配置优先级开这里可以设置为false
+#  default-to-properties: false

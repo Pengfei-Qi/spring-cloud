@@ -1,0 +1,33 @@
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fei.springcloud.mapper.CompanyTblMapper">
+    <resultMap id="resultData" type="com.fei.springcloud.pojo.CompanyTbl">
+        <result property="id" column="id"/>
+        <result property="address" column="address"/>
+        <result property="count" column="count"/>
+        <result property="name" column="name"/>
+        <result property="dbSource" column="db_source"/>
+    </resultMap>
+    <sql id="tbl_name" >company_tbl</sql>
+    <sql id="column_list">id,name, count, address, db_source</sql>
+    <sql id="like_member">name like "'%' "</sql>
+    <insert id="insert" >
+        insert into <include refid="tbl_name"/> (name, count, address, db_source)
+        VALUES (#{name},#{count},#{address},DATABASE());
+    </insert>
+    <update id="update">
+        update <include refid="tbl_name"/> set name = #{name} , count = #{count} ,address = #{address},db_source = #{dbSource} where id = #{id}
+    </update>
+    <delete id="delete">
+        delete from  <include refid="tbl_name"/> where id = #{id} and name like '%中国联通%'
+    </delete>
+    <select id="selectOneById" resultMap="resultData">
+        select <include refid="column_list"/> from <include refid="tbl_name"/> where id = #{id} limit 2
+    </select>
+    <select id="selectAll" resultMap="resultData">
+        select  <include refid="column_list"/> from <include refid="tbl_name"/> limit 2
+    </select>
+
+
+</mapper>
