@@ -3,10 +3,7 @@ package com.fei.springcloud.feign;
 import com.fei.customize.FeignConfiguration;
 import com.fei.springcloud.pojo.CompanyTbl;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -34,5 +31,8 @@ public interface UseCompanyClient {
 
     @PostMapping("/cloud/delete/{id}")
     public Map deleteCompany(@PathVariable("id") int id);
+
+    @RequestMapping("/loginName")
+    public String getLoginName();
 
 }
