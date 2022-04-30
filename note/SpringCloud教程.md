@@ -1902,4 +1902,407 @@ feign:
 
 #### 5.3.1  添加权限配置信息
 
-> 2022.04.27 更新
+> 参考链接1:    [自定义feign配置与服务调用的安全验证 - 简书 (jianshu.com)](https://www.jianshu.com/p/755b15ff0249)
+>
+> 参考链接2:     [SpringCloud 使用Feign实现声明式REST调用 | Thread丶博客 (thread-blog.org)](http://thread-blog.org/2021/08/25/SpringCloud/SpringCloud-使用Feign实现声明式REST调用/)
+
+##### 5.3.1.1 修改parent的pom.xml
+
+
+
+```xml
+<!--新增-->
+<springsecurity.code.version>5.3.5.RELEASE</springsecurity.code.version>
+
+
+<!--SpringSecurity 权限相关-->
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-core</artifactId>
+    <version>${springsecurity.code.version}</version>
+    <scope>compile</scope>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+    <version>${springboot.version}</version>
+</dependency>
+```
+
+##### 5.3.1.2 服务提供者
+
+a. `pom.xml`
+
+```xml
+<!--SpringSecurity 权限相关-->
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-core</artifactId>
+    <scope>compile</scope>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+b. `新增@Configuration类`
+
+```java
+package com.fei.springcloud.config;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Collection;
+
+/**
+ * @description:
+ * @author: qpf
+ * @date: 2022/4/26
+ * @version: 1.0
+ */
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class WebConfigSecurity extends WebSecurityConfigurerAdapter {
+    //开启HttpBasic认证
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.authorizeRequests().anyRequest().authenticated().and().httpBasic();
+    }
+
+    //声明无密码加密
+    @Bean
+    public PasswordEncoder passwordEncoder(){
+        return NoOpPasswordEncoder.getInstance();
+    }
+
+    @Autowired
+    private CustomUserDetails customUserDetails;
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(this.customUserDetails).passwordEncoder(this.passwordEncoder());
+    }
+
+    //配置授权和实体的服务
+    @Component
+    class CustomUserDetails implements UserDetailsService {
+        @Override
+        public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+            if(username.equals("xiaoming")){
+                return new SecurityUser("xiaoming","123", "role-user");
+            }else if(username.equals("zhangsan")){
+                return new SecurityUser("zhangsan", "123", "role-admin");
+            }
+            return null;
+        }
+    }
+
+    //配置用户和授权实体
+    class SecurityUser implements UserDetails{
+        private String password;
+        private String username;
+        private String role;
+
+        public SecurityUser(String username, String password, String role){
+            this.username = username;
+            this.password = password;
+            this.role = role;
+        }
+
+        @Override
+        public Collection<? extends GrantedAuthority> getAuthorities() {
+            Collection<GrantedAuthority> collection = new ArrayList<GrantedAuthority>();
+            SimpleGrantedAuthority simpleGrantedAuthority = new SimpleGrantedAuthority(this.role);
+            collection.add(simpleGrantedAuthority);
+            return collection;
+        }
+
+        @Override
+        public String getPassword() {
+            return password;
+        }
+
+        @Override
+        public String getUsername() {
+            return username;
+        }
+
+        @Override
+        public boolean isAccountNonExpired() {
+            return true;
+        }
+
+        @Override
+        public boolean isAccountNonLocked() {
+            return true;
+        }
+
+        @Override
+        public boolean isCredentialsNonExpired() {
+            return true;
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return true;
+        }
+    }
+}
+```
+
+c. `新增 BasicAuthController 类`
+
+```java
+package com.fei.springcloud.controller;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Collection;
+
+/**
+ * @description: BasicAuthController
+ * @author: qpf
+ * @date: 2022/4/26
+ * @version: 1.0
+ */
+@RestController
+@Slf4j
+public class BasicAuthController {
+    //获取登录用户
+    @RequestMapping("/loginName")
+    public String getLoginName(){
+        String username = "";	//用户名
+        String password = "";	//密码
+        String role = "";		//角色
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if(principal instanceof UserDetails){
+            UserDetails userDetails = (UserDetails)principal;
+            Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+            for(GrantedAuthority grantedAuthority : authorities){
+                username = userDetails.getUsername();
+                password = userDetails.getPassword();
+                role = grantedAuthority.getAuthority();
+                log.info("用户名：{}\t密码：{}\t角色：{}", username, password, role);
+            }
+        }
+        return "<h1>当前用户</h1><br/>用户名："+ username +"\t密码："+ password +"\t角色：" + role;
+    }
+}
+```
+
+##### 5.3.1.3  服务消费者
+
+a.` 修改配置类`--> [原来配置](#5.2.1声明 Feign的配置类)
+
+```java
+package com.fei.customize;
+
+import feign.Contract;
+import feign.auth.BasicAuthRequestInterceptor;
+import org.springframework.cloud.openfeign.support.SpringMvcContract;
+import org.springframework.context.annotation.Bean;
+
+/**
+ * @description: 自定义Feign配置信息
+ * @author: qpf
+ * @date: 2022/4/19
+ * @version: 1.0
+ */
+public class FeignConfiguration {
+    /**
+     * Feign 默认的契约是 Spring MVC的注解  用的是 SpringMvcContract 所以 FeignClient 可以使用mvc注解来去定义
+     * Contract.Default() 改成了 Feign默认的契约 所以这里配置了以后就要修改FeignClient的注解
+     * @return
+     */
+    @Bean
+    public Contract feignContract(){
+        // return new Contract.Default();
+       return new SpringMvcContract();
+    }
+
+    /**
+     * 新增basicAuth认证
+     * @return
+     */
+    @Bean
+    public BasicAuthRequestInterceptor basicAuthRequestInterceptor(){
+        return new BasicAuthRequestInterceptor("user","password");
+    }
+}
+```
+
+b. `新增接口`
+
+```java
+package com.fei.springcloud.feign;
+
+import com.fei.springcloud.pojo.CompanyTbl;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @description: feign基于BasicAuth的客户端
+ * @author: qpf
+ * @date: 2022/4/30
+ * @version: 1.0
+ */
+public interface BasicAuthClient {
+
+    @GetMapping("/cloud/one/{id}")
+    public CompanyTbl selectById(@PathVariable("id") Integer id);
+
+    @GetMapping("/cloud/all")
+    public List<CompanyTbl> getAll();
+
+    @PostMapping("/cloud/add")
+    public Map addCompany(@RequestBody CompanyTbl companyTbl);
+
+    @PostMapping("/cloud/delete/{id}")
+    public Map deleteCompany(@PathVariable("id") int id);
+
+    @RequestMapping("/loginName")
+    public String getLoginName();
+}
+```
+
+c. `调用接口`
+
+1. 基于feign的认证方式调用接口，认证方式为basicAuth
+2. 请求方式为restTemplate调用消费端接口,因此不需要 :
+   - a. 主启动类的 @EnableFeignClients 注解
+   - b. BasicAuthClient.class 也不需要 @FeignClient("spring-cloud-provider")
+
+```java
+package com.fei.springcloud.controller;
+
+import com.fei.springcloud.feign.BasicAuthClient;
+import com.fei.springcloud.pojo.CompanyTbl;
+import feign.Client;
+import feign.Contract;
+import feign.Feign;
+import feign.auth.BasicAuthRequestInterceptor;
+import feign.codec.Decoder;
+import feign.codec.Encoder;
+import org.springframework.cloud.openfeign.FeignClientsConfiguration;
+import org.springframework.context.annotation.Import;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @description:
+ *                  1. 基于feign的认证方式调用接口，认证方式为basicAuth
+ *                  2. 请求方式为restTemplate调用消费端接口,因此不需要 :
+ *                          a. 主启动类的 @EnableFeignClients 注解
+ *                          b. BasicAuthClient.class 也不需要 @FeignClient("spring-cloud-provider")
+ *                  3.  参考链接1: https://www.jianshu.com/p/755b15ff0249
+ *                  4.  参考链接2:
+ *                  http://thread-blog.org/2021/08/25/SpringCloud/SpringCloud-%E4%BD%BF%E7%94%A8Feign%E5%AE%9E%E7%8E%B0%E5%A3%B0%E6%98%8E%E5%BC%8FREST%E8%B0%83%E7%94%A8/
+ * @author: qpf
+ * @date: 2022/4/27
+ * @version: 1.0
+ */
+@Import(FeignClientsConfiguration.class)
+@RestController
+@RequestMapping("/basicAuth")
+public class BasicAuthFeignController {
+    //用户FeignClient
+    // private BasicAuthClient userFeignClient;
+    //管理员Feignclient
+    private BasicAuthClient adminFeignClient;
+
+    /**
+     * 初始化Controller时创建 根据用户和角色的不同 创建不同形态的 Client
+     * 利用BasicHttp 进行认证的方式 传输不同的用户名和密码
+     *
+     * @param decoder
+     * @param encoder
+     * @param client
+     * @param contract
+     */
+    public BasicAuthFeignController(Decoder decoder, Encoder encoder, Client client, Contract contract) {
+
+        /**
+         * 这里的构造方法的参数 是通过 @Import(FeignClientsConfiguration.class)导入Bean的方式注入进来的
+         */
+        // this.userFeignClient = Feign.builder().client(client).
+        //         encoder(encoder).decoder(decoder).contract(contract).
+        //         requestInterceptor(new BasicAuthRequestInterceptor("xiaoming", "123")).
+        //         target(BasicAuthClient.class, "http://SPRING-CLOUD-PROVIDER");
+
+        this.adminFeignClient = Feign.builder().client(client).encoder(encoder).
+                decoder(decoder).contract(contract).
+                requestInterceptor(new BasicAuthRequestInterceptor("zhangsan", "123")).
+                target(BasicAuthClient.class, "http://SPRING-CLOUD-PROVIDER");
+    }
+    //管理员调用管理员的Client
+    @RequestMapping("/admin")
+    public String getAdmin(){
+        String loginName = adminFeignClient.getLoginName();
+        return loginName;
+    }
+    //普通用户调用普通用户的Client
+    // @RequestMapping("/user")
+    // public String getUser(){
+    //     String loginName = userFeignClient.getLoginName();
+    //     return loginName;
+    // }
+
+    @GetMapping("/cloud/get/{id}")
+    public CompanyTbl getCompleteById(@PathVariable("id") int id){
+        return this.adminFeignClient.selectById(id);
+    }
+
+    @GetMapping("/cloud/all")
+    public List<CompanyTbl> getAll(){
+        return this.adminFeignClient.getAll();
+    }
+
+    @PostMapping("/cloud/add")
+    public Map addCompany(@RequestBody CompanyTbl companyTbl){
+        return this.adminFeignClient.addCompany(companyTbl);
+    }
+
+    @GetMapping("/cloud/delete/{id}")
+    public Map deleteCompany(@PathVariable("id") int id){
+        return this.adminFeignClient.deleteCompany(id);
+    }
+
+    @GetMapping("/loginName")
+    public String getLoginName(){
+        return this.adminFeignClient.getLoginName();
+    }
+}
+```
+
+d. `注意事项`
+
+> 1. 由于启用了basicAuth认证,所以调用 `CompanyController 类的接口全部失败`,原因是`调用时缺少权限认证`
+> 2. 规避措施为: 将`CompanyController` 类的 全部移动到 `BasicAuthFeignController`中,使用restTemplate调用
+> 3. 待完善的地方还有很多
