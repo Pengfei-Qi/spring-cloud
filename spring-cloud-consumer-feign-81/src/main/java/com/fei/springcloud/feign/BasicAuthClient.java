@@ -1,26 +1,18 @@
 package com.fei.springcloud.feign;
 
-import com.fei.customize.FeignConfiguration;
 import com.fei.springcloud.pojo.CompanyTbl;
-import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * @description:
- *              1. 不基于BasicAuth的认证方式
- *              2. 使用 feign 调用 spring-cloud-provider 服务提供者的 Restful 接口
+ * @description: feign基于BasicAuth的客户端
  * @author: qpf
- * @date: 2022/4/19
+ * @date: 2022/4/30
  * @version: 1.0
  */
-// 使用默认配置
-// @FeignClient("spring-cloud-provider")
-// 使用自定义配置类
-@FeignClient(name = "spring-cloud-provider", configuration = FeignConfiguration.class)
-public interface UseCompanyClient {
+public interface BasicAuthClient {
 
     @GetMapping("/cloud/one/{id}")
     public CompanyTbl selectById(@PathVariable("id") Integer id);
@@ -36,5 +28,4 @@ public interface UseCompanyClient {
 
     @RequestMapping("/loginName")
     public String getLoginName();
-
 }

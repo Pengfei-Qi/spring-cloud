@@ -1,6 +1,7 @@
 package com.fei.customize;
 
 import feign.Contract;
+import feign.auth.BasicAuthRequestInterceptor;
 import org.springframework.cloud.openfeign.support.SpringMvcContract;
 import org.springframework.context.annotation.Bean;
 
@@ -20,5 +21,10 @@ public class FeignConfiguration {
     public Contract feignContract(){
         // return new Contract.Default();
        return new SpringMvcContract();
+    }
+
+    @Bean
+    public BasicAuthRequestInterceptor basicAuthRequestInterceptor(){
+        return new BasicAuthRequestInterceptor("user","password");
     }
 }
