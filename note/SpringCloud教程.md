@@ -1612,6 +1612,7 @@ ribbon:
 > 1. 创建feign消费端, 例如: spring-cloud-consumer-feign-81
 > 2. 使用默认配置
 > 3. 参考链接:  [SpringCloud 使用Feign实现声明式REST调用 | Thread丶博客 (thread-blog.org)](http://thread-blog.org/2021/08/25/SpringCloud/SpringCloud-使用Feign实现声明式REST调用/)
+> 3. 参考链接: [Spring Cloud系列(五)：声明式 REST 客户端 Feign | 光星の博客 (gxitsky.com)](http://www.gxitsky.com/article/17)
 
 #### 5.1.1 pom文件
 
@@ -2306,3 +2307,284 @@ d. `注意事项`
 > 1. 由于启用了basicAuth认证,所以调用 `CompanyController 类的接口全部失败`,原因是`调用时缺少权限认证`
 > 2. 规避措施为: 将`CompanyController` 类的 全部移动到 `BasicAuthFeignController`中,使用restTemplate调用
 > 3. 待完善的地方还有很多
+
+#### 5.3.2 文件上传
+
+>  参考资料: [文件上传](http://212.64.64.68/detail.html?id=76&menuId=19)
+>
+> 项目参考: [文件上传的项目](https://gitee.com/zhangbin_java/springcloud-eureka-feign-ribbon-gateway-hystrix)
+>
+> 参考资料2: [声明式 REST 客户端 ](http://www.gxitsky.com/article/17)
+
+`记录问题及解决方式`:
+
+若存在相同名的 FeignClient 客户端重复注册，即 @FeignClient 注解的 name 属性存在重复。
+
+**三种解决方案：**
+
+1. 配置多个相同 name 的 Feign Client，使用 `@FeignClient`注解的 `contextId` 属性以避免这些配置 Bean 的名称冲突。*-- 推荐这种*
+
+2. 同一个服务的调用，写在同一个 @FeignClient 客户端中，这样 name 就不会重复。
+
+3. 开启 Spring Bean 允许覆盖，默认是禁止的，如下：
+
+   ```shell
+   spring.main.allow-bean-definition-overriding=true
+   ```
+
+##### 5.3.2.1 添加公共包
+
+- `ResponseData.class`
+
+  ```java
+  package com.fei.springcloud.common.dto;
+  
+  import com.fei.springcloud.common.enums.ErrorCodeEnum;
+  import lombok.AllArgsConstructor;
+  import lombok.Data;
+  import lombok.NoArgsConstructor;
+  import lombok.experimental.Accessors;
+  
+  /*
+   * @Author qpf
+   * @Date 2022/4/30 10:48
+   * @Description: 返回值封装
+   *
+   **/
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Data
+  @Accessors(chain=true)
+  public class ResponseData<T> {
+      private String code;
+      private String msg;
+      private T data;
+  
+      /*
+       * @Author qpf
+       * @Date 2022/4/30 11:37
+       * @Description: 自定义返回值
+       *
+       **/
+      public static <T> ResponseData<T> response(ErrorCodeEnum errorCodeEnum, T data){
+          return new ResponseData(errorCodeEnum.getCode(),errorCodeEnum.getMsg(),data);
+      }
+  }
+  
+  ```
+
+- `PageDTO.class`
+
+  ```java
+  package com.fei.springcloud.common.dto;
+  
+  import lombok.AllArgsConstructor;
+  import lombok.Data;
+  import lombok.NoArgsConstructor;
+  import lombok.experimental.Accessors;
+  
+  import java.util.List;
+  
+  /*
+   * @Author qpf
+   * @Date 2022/4/30 10:51
+   * @Description: 分页封装
+   *
+   **/
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Data
+  @Accessors(chain=true)
+  public class PageDTO<T> {
+      private Integer pageSize;//页容量
+      private Integer pageNum;//页码
+      private Integer totalSize;//总容量
+      private List<T> pageContent;//内容列表
+  }
+  ```
+
+- `UserDTO.class`
+
+  ```java
+  package com.fei.springcloud.common.dto;
+  
+  import lombok.AllArgsConstructor;
+  import lombok.Data;
+  import lombok.experimental.Accessors;
+  
+  @Accessors(chain = true)
+  @Data
+  @AllArgsConstructor
+  public class UserDTO {
+      private int id;
+      private String username;
+      private int age;
+      private String desc;
+  }
+  ```
+
+  
+
+##### 5.3.2.2 生产者
+
+1.  `pom.xml`
+
+   ```xml
+   <!--Feign对于上传文件的依赖-->
+   <dependency>
+       <groupId>io.github.openfeign.form</groupId>
+       <artifactId>feign-form-spring</artifactId>
+       <version>3.8.0</version>
+   </dependency>
+   
+   ```
+
+2. `上传文件的接口，写法就是SpringMVC的上传接口的写法`
+
+   ```java
+   package com.fei.springcloud.controller;
+   
+   
+   
+   import com.fei.springcloud.common.dto.ResponseData;
+   import com.fei.springcloud.common.enums.ErrorCodeEnum;
+   import lombok.extern.slf4j.Slf4j;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   import org.springframework.web.bind.annotation.RequestParam;
+   import org.springframework.web.bind.annotation.RestController;
+   import org.springframework.web.multipart.MultipartFile;
+   
+   import java.io.File;
+   import java.io.IOException;
+   
+   /**
+    * @description: 上传文件的接口，写法就是SpringMVC的上传接口的写法
+    * @author: qpf
+    * @date: 2022/5/1
+    * @version: 1.0
+    */
+   @Slf4j
+   @RestController
+   @RequestMapping("/user")
+   public class FileUploadController {
+   
+       @RequestMapping(value = "/fileUploadTest",method = RequestMethod.POST)
+       public ResponseData<?> fileUploadTest(@RequestParam(value = "file") MultipartFile file, String remark){
+           log.info("开始文件上传,remakr={}",remark);
+           if(file == null || file.getSize()<=0){
+               log.info("文件大小不满足要求");
+               return ResponseData.response(ErrorCodeEnum.FAIL,null);
+           }
+           try {
+               file.transferTo(new File("d://"+file.getOriginalFilename()));
+           } catch (IOException e) {
+               log.error("文件上传失败",e);
+               return ResponseData.response(ErrorCodeEnum.FAIL,null);
+           }
+           log.info("文件上传结束");
+           return ResponseData.response(ErrorCodeEnum.SUCCESS,null);
+       }
+   }
+   ```
+
+##### 5.3.2.3 消费者
+
+1. `pom.xml`
+
+   ```xml
+           <!--Feign对于上传文件的依赖-->
+           <dependency>
+               <groupId>io.github.openfeign.form</groupId>
+               <artifactId>feign-form-spring</artifactId>
+               <version>3.8.0</version>
+           </dependency>
+   ```
+
+2. 配置多个相同 name 的 `Feign Client`，使用 `@FeignClient`注解的 `contextId` 属性以避免这些配置 Bean 的名称冲突
+
+   1. 修改UseCompanyClient的`@FeignClient`,contextId = `"useCompanyClient"`
+
+      ```java
+      @FeignClient(contextId = "useCompanyClient",
+                   name = "spring-cloud-provider", 
+                   configuration = FeignConfiguration.class)
+      public interface UseCompanyClient
+      ```
+
+   2. 新增Feign Client的接口,contextId = `"userFileClient"`
+
+      ```java
+      package com.fei.springcloud.feign;
+      
+      import com.fei.customize.FeignConfiguration;
+      import com.fei.springcloud.common.dto.ResponseData;
+      import org.springframework.cloud.openfeign.FeignClient;
+      import org.springframework.http.MediaType;
+      import org.springframework.web.bind.annotation.RequestMapping;
+      import org.springframework.web.bind.annotation.RequestMethod;
+      import org.springframework.web.bind.annotation.RequestParam;
+      import org.springframework.web.bind.annotation.RequestPart;
+      import org.springframework.web.multipart.MultipartFile;
+      
+      /**
+       * @description:  文件上传
+       * @author: qpf
+       * @date: 2022/5/1
+       * @version: 1.0
+       */
+      @FeignClient(contextId = "userFileClient",name = "spring-cloud-provider", configuration = FeignConfiguration.class)
+      public interface UserFileUploadClient {
+      
+          @RequestMapping(value = "/user/fileUploadTest",
+                  method= RequestMethod.POST,
+                  consumes= {MediaType.MULTIPART_FORM_DATA_VALUE})
+          ResponseData<?> fileUploadTest(@RequestPart(value = "file") MultipartFile file, @RequestParam(value = "remark") String remark);
+      }
+      ```
+
+   3. 新增`UserFileUploadController`
+
+      ```java
+      package com.fei.springcloud.controller;
+      
+      import com.fei.springcloud.common.dto.ResponseData;
+      import com.fei.springcloud.common.enums.ErrorCodeEnum;
+      import com.fei.springcloud.feign.UserFileUploadClient;
+      import lombok.extern.slf4j.Slf4j;
+      import org.springframework.beans.factory.annotation.Autowired;
+      import org.springframework.web.bind.annotation.RequestMapping;
+      import org.springframework.web.bind.annotation.RequestMethod;
+      import org.springframework.web.bind.annotation.RequestPart;
+      import org.springframework.web.bind.annotation.RestController;
+      import org.springframework.web.multipart.MultipartFile;
+      
+      /**
+       * @description:  实现文件上传功能
+       * @author: qpf
+       * @date: 2022/5/1
+       * @version: 1.0
+       */
+      @Slf4j
+      @RestController
+      @RequestMapping("/user/file")
+      public class UserFileUploadController {
+      
+          @Autowired
+          private UserFileUploadClient feignUserService;
+      
+          @RequestMapping(value = "/fileUploadTest",method = RequestMethod.POST)
+          public ResponseData<?> fileUploadTest(@RequestPart(value = "file") MultipartFile file, String remark){
+              log.info("开始文件上传");
+              if(file == null || file.getSize()<=0){
+                  log.info("文件大小不满足要求");
+                  return ResponseData.response(ErrorCodeEnum.FAIL,null);
+              }
+              ResponseData<?> responseData = feignUserService.fileUploadTest(file,remark);
+              log.info("文件上传结束");
+              return responseData;
+          }
+      }
+      ```
+
+      
