@@ -1,7 +1,6 @@
 server:
   port: 8001
 
-
 dbserver:
   mysql:
     host: localhost
@@ -50,6 +49,10 @@ spring:
       #打开PSCache，并指定每个连接上PSCache的大小。oracle设为true，mysql设为false。分库分表较多推荐设置为false
       pool-prepared-statements: false
       max-pool-prepared-statement-per-connection-size: 20
+  servlet:
+    multipart:
+      #设置上传文件大小,-1为不限制
+      max-file-size: 10MB
 
 customize:
   eureka:

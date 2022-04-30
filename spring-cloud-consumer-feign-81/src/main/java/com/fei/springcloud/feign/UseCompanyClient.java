@@ -19,7 +19,7 @@ import java.util.Map;
 // 使用默认配置
 // @FeignClient("spring-cloud-provider")
 // 使用自定义配置类
-@FeignClient(name = "spring-cloud-provider", configuration = FeignConfiguration.class)
+@FeignClient(contextId = "useCompanyClient",name = "spring-cloud-provider", configuration = FeignConfiguration.class)
 public interface UseCompanyClient {
 
     @GetMapping("/cloud/one/{id}")

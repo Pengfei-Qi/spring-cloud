@@ -90,18 +90,10 @@
         <!--    <artifactId>spring-boot-starter-security</artifactId>-->
         <!--</dependency>-->
 
-
-
         <!--Feign对于上传文件的依赖-->
         <dependency>
             <groupId>io.github.openfeign.form</groupId>
             <artifactId>feign-form-spring</artifactId>
-            <version>3.8.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.openfeign.form</groupId>
-            <artifactId>feign-form</artifactId>
-            <version>3.8.0</version>
         </dependency>
     </dependencies>
 
