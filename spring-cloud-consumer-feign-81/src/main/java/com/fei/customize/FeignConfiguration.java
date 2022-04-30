@@ -23,8 +23,8 @@ public class FeignConfiguration {
        return new SpringMvcContract();
     }
 
-    @Bean
-    public BasicAuthRequestInterceptor basicAuthRequestInterceptor(){
-        return new BasicAuthRequestInterceptor("user","password");
-    }
+    // @Bean
+    // public BasicAuthRequestInterceptor basicAuthRequestInterceptor(){
+    //     return new BasicAuthRequestInterceptor("user","password");
+    // }
 }

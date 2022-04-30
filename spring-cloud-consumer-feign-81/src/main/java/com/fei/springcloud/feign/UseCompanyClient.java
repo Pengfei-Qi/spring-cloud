@@ -34,7 +34,4 @@ public interface UseCompanyClient {
     @PostMapping("/cloud/delete/{id}")
     public Map deleteCompany(@PathVariable("id") int id);
 
-    @RequestMapping("/loginName")
-    public String getLoginName();
-
 }

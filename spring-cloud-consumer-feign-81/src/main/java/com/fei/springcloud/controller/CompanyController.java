@@ -43,8 +43,4 @@ public class CompanyController {
         return useCompanyClient.deleteCompany(id);
     }
 
-    @GetMapping("/loginName")
-    public String getLoginName(){
-        return useCompanyClient.getLoginName();
-    }
 }
