@@ -1,9 +1,9 @@
 server:
-  port: 8081
+  port: 8082
 
 spring:
   application:
-    name: spring-cloud-consumer
+    name: spring-cloud-dashboard
 
 #eureka配置相关
 customize:
@@ -29,28 +29,6 @@ eureka:
     service-url:
       defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
 
-
-# feign 调用相关
-feign:
-  client:
-    spring-cloud-provider:
-      #相当于Request.Options
-      connectTimeout: 5000
-      #相当于Request.Options
-      readTimeout: 5000
-#      #配置Feign的日志级别，相当于代码配置方式中的Logger
-      loggerLevel: full
-      #  #feign配置文件的方式比java配置优先级要高,如果想java配置优先级开这里可以设置为false
-    default-to-properties: false
-  #开启Feign对与请求和响应的压缩
-  compression:
-    request:
-      enabled: true
-      mime-types: [application/json, application/xml, text/plain, text/html, text/css, text/javascript, application/javascript, application/ecmascript, application/x-javascript, application/x-ecmascript]
-      min-request-size: 2048
-    response:
-      enabled: true
-
 # 指定hystrix的配置文件
 management:
   endpoints:
@@ -64,13 +42,32 @@ management:
       enabled: true
       show-details: always #配置健康接口显示详细信息
 
+
 # hystrix的监控面板配置
 hystrix:
   dashboard:
     proxy-stream-allow-list: "*"
 
+#监控集群
+turbine:
+  app-config: spring-cloud-consumer,spring-cloud-provider
+  cluster-name-expression: "'default'"
+
+
 #  http://host:port/actuator/info 的访问信息
 info:
-  name: spring-cloud-consumer
+  name: spring-cloud-dashboard
   version: 1.0-SNAPSHOT
-  port: 8081
+  port: 8082
+  featrues: "监控集群用的...所有信息都是自定义的"
+  dashboard-url: http://localhost:8082/hystrix
+  custom-cluster: http://localhost:8082/turbine.stream
+  single-hystrix:
+    consumer:
+      url: http://localhost:8081/actuator/hystrix.stream
+      name: spring-cloud-consumer
+      cluster: default
+    provider:
+      url: http://localhost:8001/actuator/hystrix.stream,http://localhost:8002/actuator/hystrix.stream,http://localhost:8003/actuator/hystrix.stream
+      name: spring-cloud-provider
+      cluster: default

@@ -20,6 +20,7 @@
         <module>spring-cloud-provider-company-8002</module>
         <module>spring-cloud-provider-company-8003</module>
         <module>spring-cloud-consumer-feign-81</module>
+        <module>spring-cloud-dashboard</module>
     </modules>
 
     <properties>
@@ -154,6 +155,12 @@
                 <groupId>io.github.openfeign.form</groupId>
                 <artifactId>feign-form-spring</artifactId>
                 <version>${feign.form.version}</version>
+            </dependency>
+            <!--actuator 监控面板-->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-actuator</artifactId>
+                <version>${springboot.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
