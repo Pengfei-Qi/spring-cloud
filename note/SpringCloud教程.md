@@ -2587,4 +2587,507 @@ d. `注意事项`
       }
       ```
 
-      
+
+
+
+#### 5.3.3 Hystrix 熔断机制
+
+> 参考链接1: [SpringCloud系列之服务容错保护Netflix Hystrix - smileNicky - 博客园 (cnblogs.com)](https://www.cnblogs.com/mzq123/p/13439385.html)
+>
+> 参考链接2: [SpringCloud 使用Hystrix 实现容错 | Thread丶博客 (thread-blog.org)](http://thread-blog.org/2021/09/04/SpringCloud/SpringCloud-使用Hystrix-实现容错/)
+
+##### 5.3.3.1 实现容错机制
+
+1. 添加依赖
+
+   ```xml
+   <!--添加熔断机制 hystrix-->
+   <dependency>
+       <groupId>org.springframework.cloud</groupId>
+       <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+   </dependency>
+   ```
+
+2. 在主启动类上添加注解`@EnableCircuitBreaker`
+
+3. 在方法上实现异常时调用
+
+   ```java
+   package com.fei.springcloud.controller;
+   
+   import com.fei.springcloud.feign.UseCompanyClient;
+   import com.fei.springcloud.pojo.CompanyTbl;
+   import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.web.bind.annotation.*;
+   
+   import java.util.Arrays;
+   import java.util.List;
+   import java.util.Map;
+   
+   /**
+    * @description:
+    *                 1. 不基于BasicAuth的认证方式
+    *  *              2. 使用 feign 调用 spring-cloud-provider 服务提供者的 Restful 接口
+    * @author: qpf
+    * @date: 2022/4/16
+    * @version: 1.0
+    */
+   @RestController
+   @RequestMapping("/consumer")
+   public class CompanyController {
+   
+       @Autowired
+       UseCompanyClient useCompanyClient;
+   
+       @GetMapping("/cloud/get/{id}")
+       public CompanyTbl getCompleteById(@PathVariable("id") int id){
+           return useCompanyClient.selectById(id);
+       }
+   
+       @GetMapping("/cloud/all")
+       public List<CompanyTbl> getAll(){
+           return useCompanyClient.getAll();
+       }
+   
+       @PostMapping("/cloud/add")
+       public Map addCompany(@RequestBody CompanyTbl companyTbl){
+           return useCompanyClient.addCompany(companyTbl);
+       }
+   
+       @GetMapping("/cloud/delete/{id}")
+       public Map deleteCompany(@PathVariable("id") int id){
+           return useCompanyClient.deleteCompany(id);
+       }
+   
+       /**
+        * 测试熔断机制
+        * @return
+        */
+       @GetMapping("/testHystrix/all")
+       @HystrixCommand(fallbackMethod = "apiFallback")
+       public List<CompanyTbl> testHystrix(){
+           int i = 1/0;
+           return useCompanyClient.getAll();
+       }
+   
+       /**
+        * 熔断机制的回调方法
+        * @return
+        */
+       public List<CompanyTbl> apiFallback(){
+           CompanyTbl companyTbl = new CompanyTbl();
+           companyTbl.setId(0);
+           companyTbl.setName("testHystrix");
+           companyTbl.setAddress("熔断机制");
+           companyTbl.setCount(9999999);
+           companyTbl.setDbSource("this is error info");
+           return Arrays.asList(companyTbl);
+       }
+   }
+   ```
+
+##### 5.3.3.2 监控面板
+
+1. 添加依赖
+
+   ```xml
+           <!-- hystrix面板-->
+           <dependency>
+               <groupId>org.springframework.cloud</groupId>
+               <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+           </dependency>
+           <!--actuator 监控面板-->
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-actuator</artifactId>
+           </dependency>
+   ```
+
+2. 添加配置信息
+
+   ```yaml
+   ###################[ spring-boot-starter-actuator 配置 ]##########################
+   # 指定hystrix的配置文件
+   management:
+     endpoints:
+       web:
+         exposure:
+           include: "*"  #配置暴露全部的监控接口
+         # 自定义配置暴露的监控接口,默认为 /actuator
+   #      base-path: /
+     endpoint:
+       health:
+         enabled: true
+         show-details: always #配置健康接口显示详细信息
+   ###################[ spring-boot-starter-actuator 配置 ]##########################
+   # hystrix的监控面板配置
+   hystrix:
+     dashboard:
+       proxy-stream-allow-list: "*"
+         
+   ```
+
+3. 在主启动类上面添加注解: `@EnableHystrixDashboard`
+
+   ```java
+   package com.fei.springcloud;
+   
+   import com.fei.customize.FeignConfiguration;
+   import org.springframework.boot.SpringApplication;
+   import org.springframework.boot.autoconfigure.SpringBootApplication;
+   import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
+   import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+   import org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard;
+   import org.springframework.cloud.openfeign.EnableFeignClients;
+   
+   /**
+    * @description:
+    * @author: qpf
+    * @date: 2022/4/16
+    * @version: 1.0
+    */
+   @SpringBootApplication
+   @EnableEurekaClient
+   // @EnableFeignClients
+   //开启全局的自定义Feign配置
+   @EnableFeignClients(defaultConfiguration = FeignConfiguration.class)
+   //开启全局的熔断器,支持服务降级
+   @EnableCircuitBreaker
+   // 开启全局的Hystrix监控,以及控制台
+   @EnableHystrixDashboard
+   public class SpringCloudConsumerApplication {
+       public static void main(String[] args) {
+           SpringApplication.run(SpringCloudConsumerApplication.class,args);
+       }
+   }
+   ```
+
+4. 访问地址: 
+
+   - `Hystrix Dashboard`:  http://host:port/hystrix,例如: [Hystrix Dashboard](http://localhost:8082/hystrix)
+
+     ![](https://s3.bmp.ovh/imgs/2022/05/01/d39980fe7b43d5a8.jpg)
+
+   - `Single Hystrix App(单个应用):`      https://hystrix-app:port/actuator/hystrix.stream,   			例如:http://localhost:8081/actuator/hystrix.stream
+
+     
+
+     **a. 期待结果**
+
+     ![](https://s3.bmp.ovh/imgs/2022/05/01/489e6150c46c4932.jpg)
+
+     **b.   出现异常:** `Unable to connect to Command Metric Stream`
+
+     ![](https://s3.bmp.ovh/imgs/2022/05/01/d8dddec1f451b697.jpg)
+
+     **c. 调用熔断接口即可:**  http://localhost:8081/consumer/testHystrix/all
+
+     ```java
+         /**
+          * 测试熔断机制
+          * @return
+          */
+         @GetMapping("/testHystrix/all")
+         @HystrixCommand(fallbackMethod = "apiFallback")
+         public List<CompanyTbl> testHystrix(){
+             int i = 1/0;
+             return useCompanyClient.getAll();
+         }
+     
+         /**
+          * 熔断机制的回调方法
+          * @return
+          */
+         public List<CompanyTbl> apiFallback(){
+             CompanyTbl companyTbl = new CompanyTbl();
+             companyTbl.setId(0);
+             companyTbl.setName("testHystrix");
+             companyTbl.setAddress("熔断机制");
+             companyTbl.setCount(9999999);
+             companyTbl.setDbSource("this is error info");
+             return Arrays.asList(companyTbl);
+         }
+     ```
+
+     **d. 响应结果**
+
+     ```json
+     [
+         {
+             "id": 0,
+             "name": "testHystrix",
+             "count": 9999999,
+             "address": "熔断机制",
+             "dbSource": "this is error info"
+         }
+     ]
+     ```
+
+     
+
+     
+
+
+##### 5.3.3.3 自定义信息
+
+> 针对: http://host:port/actuator/info
+
+1. 在 **application.yml** 中添加以下信息即可,`信息可自由添加`:
+
+   ```yaml
+   #  http://host:port/actuator/info 的访问信息
+   info:
+     name: spring-cloud-xxxxxx
+     version: 1.0-SNAPSHOT
+     port: 8082
+     featrues: "监控集群用的...所有信息都是自定义的"
+   ```
+
+2.   响应数据
+
+   ```json
+   {
+       "name": "spring-cloud-xxxxxx",
+       "version": "1.0-SNAPSHOT",
+       "port": 8082,
+       "featrues": "监控集群用的...所有信息都是自定义的",
+   }
+   ```
+
+   
+
+##### 5.3.3.4 Turbine 聚合监控数据
+
+1. 添加依赖
+
+   ```xml
+           <!--引入Turbine监控多个微服务-->
+           <dependency>
+               <groupId>org.springframework.cloud</groupId>
+               <artifactId>spring-cloud-starter-netflix-turbine</artifactId>
+           </dependency>
+   ```
+
+2. 在 **application.yml** 中添加以下信息:
+
+   ```yaml
+   #监控集群
+   turbine:
+     app-config: spring-cloud-consumer,spring-cloud-provider
+     cluster-name-expression: "'default'"
+   ```
+
+3. 在主启动类添加注解: `@EnableTurbine`
+
+4. 新创建一个模块`spring-cloud-dashboard`,用于监控,以下为代码:
+
+   **a. pom.xml**
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <project xmlns="http://maven.apache.org/POM/4.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+       <parent>
+           <artifactId>springCloud</artifactId>
+           <groupId>org.fei</groupId>
+           <version>1.0-SNAPSHOT</version>
+       </parent>
+       <modelVersion>4.0.0</modelVersion>
+   
+       <artifactId>spring-cloud-dashboard</artifactId>
+   
+       <properties>
+           <maven.compiler.source>8</maven.compiler.source>
+           <maven.compiler.target>8</maven.compiler.target>
+       </properties>
+   
+       <dependencies>
+           <!--基础依赖相关-->
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter</artifactId>
+               <exclusions>
+                   <exclusion>
+                       <artifactId>slf4j-api</artifactId>
+                       <groupId>org.slf4j</groupId>
+                   </exclusion>
+               </exclusions>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-test</artifactId>
+           </dependency>
+           <dependency>
+               <groupId>org.projectlombok</groupId>
+               <artifactId>lombok</artifactId>
+           </dependency>
+           <dependency>
+               <groupId>org.fei</groupId>
+               <artifactId>spring-cloud-api</artifactId>
+               <version>1.0-SNAPSHOT</version>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-web</artifactId>
+           </dependency>
+           <!--添加熔断机制 hystrix面板-->
+           <dependency>
+               <groupId>org.springframework.cloud</groupId>
+               <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+           </dependency>
+           <!--actuator 监控面板-->
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-actuator</artifactId>
+           </dependency>
+           <!--引入Turbine监控多个微服务-->
+           <dependency>
+               <groupId>org.springframework.cloud</groupId>
+               <artifactId>spring-cloud-starter-netflix-turbine</artifactId>
+           </dependency>
+       </dependencies>
+   
+   </project>
+   ```
+
+   b. **application.yml** 
+
+   ```yaml
+   server:
+     port: 8082
+   
+   spring:
+     application:
+       name: spring-cloud-dashboard
+   
+   #eureka配置相关
+   customize:
+     eureka:
+       host:
+         host1: eureka-server
+         host2: eureka-server2
+         host3: eureka-server3
+       port:
+         port1: 7001
+         port2: 7002
+         port3: 7003
+   
+   #eureka配置相关
+   eureka:
+     instance:
+       hostname: localhost
+     client:
+       # 向服务端注册自己
+       register-with-eureka: true
+       # 从Eureka Server获取注册的服务信息
+       fetch-registry: true
+       service-url:
+         defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+   
+   # 指定hystrix的配置文件
+   management:
+     endpoints:
+       web:
+         exposure:
+           include: "*"  #配置暴露全部的监控接口
+         # 自定义配置暴露的监控接口,默认为 /actuator
+   #      base-path: /
+     endpoint:
+       health:
+         enabled: true
+         show-details: always #配置健康接口显示详细信息
+   
+   
+   # hystrix的监控面板配置
+   hystrix:
+     dashboard:
+       proxy-stream-allow-list: "*"
+   
+   #监控集群
+   turbine:
+     app-config: spring-cloud-consumer,spring-cloud-provider
+     cluster-name-expression: "'default'"
+   
+   
+   #  http://host:port/actuator/info 的访问信息
+   info:
+     name: spring-cloud-dashboard
+     version: 1.0-SNAPSHOT
+     port: 8082
+     featrues: "监控集群用的...所有信息都是自定义的"
+     dashboard-url: http://localhost:8082/hystrix
+     custom-cluster: http://localhost:8082/turbine.stream
+     single-hystrix:
+       consumer:
+         url: http://localhost:8081/actuator/hystrix.stream
+         name: spring-cloud-consumer
+         cluster: default
+       provider:
+         url: http://localhost:8001/actuator/hystrix.stream,http://localhost:8002/actuator/hystrix.stream,http://localhost:8003/actuator/hystrix.stream
+         name: spring-cloud-provider
+         cluster: default
+   ```
+
+   **c. 主启动类**
+
+   ```java
+   package com.fei.springcloud;
+   
+   import org.springframework.boot.SpringApplication;
+   import org.springframework.boot.autoconfigure.SpringBootApplication;
+   import org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard;
+   import org.springframework.cloud.netflix.turbine.EnableTurbine;
+   
+   /**
+    * @description:
+    * @author: qpf
+    * @date: 2022/5/1
+    * @version: 1.0
+    */
+   
+   // 开启Turbine,访问集群的统计信息
+   @EnableTurbine
+   // 开启全局的Hystrix监控,以及控制台
+   @EnableHystrixDashboard
+   @SpringBootApplication
+   public class SpringCloudDashboardApplication {
+       public static void main(String[] args) {
+           SpringApplication.run(SpringCloudDashboardApplication.class, args);
+       }
+   }
+   ```
+
+5. 主要用于监控,因此可访问:
+
+   - dashboard:   http://localhost:8082/hystrix
+
+   - 聚合链接,即包含集群信息: http://localhost:8082/turbine.stream
+
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
