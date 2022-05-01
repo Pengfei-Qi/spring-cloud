@@ -21,6 +21,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -49,5 +55,19 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+        <!--spring-security-->
+        <!--<dependency>-->
+        <!--    <groupId>org.springframework.security</groupId>-->
+        <!--    <artifactId>spring-security-core</artifactId>-->
+        <!--    <scope>compile</scope>-->
+        <!--</dependency>-->
+
+        <!--Feign对于上传文件的依赖-->
+        <dependency>
+            <groupId>io.github.openfeign.form</groupId>
+            <artifactId>feign-form-spring</artifactId>
+            <version>3.8.0</version>
+        </dependency>
+
     </dependencies>
 </project>

@@ -31,26 +31,23 @@ eureka:
 
 
 # feign 调用相关
-#feign:
-#  client:
-#    spring-cloud-provider:
-#      #相当于Request.Options
-#      connectTimeout: 5000
-#      #相当于Request.Options
-#      readTimeout: 5000
+feign:
+  client:
+    spring-cloud-provider:
+      #相当于Request.Options
+      connectTimeout: 5000
+      #相当于Request.Options
+      readTimeout: 5000
 #      #配置Feign的日志级别，相当于代码配置方式中的Logger
-#      loggerLevel: full
-#      #Feign的错误解码器,相当于代码配置中的ErrorDecoder
-#      errorDecoder: com.example.SimpleErrorDecoder
-#      #配置重试,相当于代码配置方式中的Retryer
-#      retryer: com.example.SimpleRetryer
-#      decode404: false
-#    config:
-#      #为单独的服务配置Feign配置 (这里的名字是你的服务的名字)
-#      spring-cloud-provider:
-#        loggerLevel: full #配置Feign日志 为full
-#      #配置全局的Feign配置
-#      default:
-#        loggerLevel: BASIC
-#  #feign配置文件的方式比java配置优先级要高,如果想java配置优先级开这里可以设置为false
-#  default-to-properties: false
+      loggerLevel: full
+      #  #feign配置文件的方式比java配置优先级要高,如果想java配置优先级开这里可以设置为false
+    default-to-properties: false
+  #开启Feign对与请求和响应的压缩
+  compression:
+    request:
+      enabled: true
+      mime-types: [application/json, application/xml, text/plain, text/html, text/css, text/javascript, application/javascript, application/ecmascript, application/x-javascript, application/x-ecmascript]
+      min-request-size: 2048
+    response:
+      enabled: true
+

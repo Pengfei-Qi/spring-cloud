@@ -1,7 +1,6 @@
 server:
   port: 8002
 
-
 dbserver:
   mysql:
     host: localhost
@@ -22,10 +21,10 @@ spring:
     name: spring-cloud-provider
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-#    username: ${dbserver.mysql.username}
-#    password: ${dbserver.mysql.password}
-#    url: jdbc:mysql://${dbserver.mysql.host}:${dbserver.mysql.port}/${dbserver.mysql.databases}?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&serverTimezone=UTC
+    #    driver-class-name: com.mysql.cj.jdbc.Driver
+    #    username: ${dbserver.mysql.username}
+    #    password: ${dbserver.mysql.password}
+    #    url: jdbc:mysql://${dbserver.mysql.host}:${dbserver.mysql.port}/${dbserver.mysql.databases}?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&serverTimezone=UTC
     druid:
       driver-class-name: com.mysql.cj.jdbc.Driver
       username: ${dbserver.mysql.username}
@@ -50,6 +49,10 @@ spring:
       #打开PSCache，并指定每个连接上PSCache的大小。oracle设为true，mysql设为false。分库分表较多推荐设置为false
       pool-prepared-statements: false
       max-pool-prepared-statement-per-connection-size: 20
+  servlet:
+    multipart:
+      #设置上传文件大小,-1为不限制
+      max-file-size: 10MB
 
 customize:
   eureka:

@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @description: 调用 spring-cloud-api 新创建的feign接口
+ * @description:
+ *                 1. 不基于BasicAuth的认证方式
+ *  *              2. 使用 feign 调用 spring-cloud-provider 服务提供者的 Restful 接口
  * @author: qpf
  * @date: 2022/4/16
  * @version: 1.0
@@ -40,4 +42,5 @@ public class CompanyController {
     public Map deleteCompany(@PathVariable("id") int id){
         return useCompanyClient.deleteCompany(id);
     }
+
 }

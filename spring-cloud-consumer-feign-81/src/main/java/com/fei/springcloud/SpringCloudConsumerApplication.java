@@ -15,7 +15,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @SpringBootApplication
 @EnableEurekaClient
 // @EnableFeignClients
-//开启全局的Feign配置
+//开启全局的自定义Feign配置
 @EnableFeignClients(defaultConfiguration = FeignConfiguration.class)
 public class SpringCloudConsumerApplication {
     public static void main(String[] args) {
