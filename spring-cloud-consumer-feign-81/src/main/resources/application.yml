@@ -6,28 +6,28 @@ spring:
     name: spring-cloud-consumer
 
 #eureka配置相关
-customize:
-  eureka:
-    host:
-      host1: eureka-server
-      host2: eureka-server2
-      host3: eureka-server3
-    port:
-      port1: 7001
-      port2: 7002
-      port3: 7003
+#customize:
+#  eureka:
+#    host:
+#      host1: eureka-server
+#      host2: eureka-server2
+#      host3: eureka-server3
+#    port:
+#      port1: 7001
+#      port2: 7002
+#      port3: 7003
 
-#eureka配置相关
-eureka:
-  instance:
-    hostname: localhost
-  client:
-    # 向服务端注册自己
-    register-with-eureka: true
-    # 从Eureka Server获取注册的服务信息
-    fetch-registry: true
-    service-url:
-      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+##eureka配置相关
+#eureka:
+#  instance:
+#    hostname: localhost
+#  client:
+#    # 向服务端注册自己
+#    register-with-eureka: true
+#    # 从Eureka Server获取注册的服务信息
+#    fetch-registry: true
+#    service-url:
+#      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
 
 
 # feign 调用相关
@@ -69,8 +69,27 @@ hystrix:
   dashboard:
     proxy-stream-allow-list: "*"
 
+# 远程仓库返回的数据模型
+data:
+  env: NaN
+  user:
+    username: NaN
+    password: NaN
+    tips: 'NaN'
+
 #  http://host:port/actuator/info 的访问信息
 info:
-  name: spring-cloud-consumer
+  name: ${spring.application.name}
   version: 1.0-SNAPSHOT
   port: 8081
+  config-server:
+    id: spring-cloud-config-server
+    port: 8010
+    # 返回的数据模型
+    model:
+      url:
+        - http://localhost:8010/${spring.application.name}/dev/master
+        - http://localhost:8010/${spring.application.name}/prod
+        - http://localhost:8010/${spring.application.name}-dev.yml
+        - http://localhost:8010/${spring.application.name}-prod.yml
+        - http://localhost:8010/master/${spring.application.name}-prod.yml

@@ -1,0 +1,67 @@
+server:
+  port: 8010
+
+spring:
+  application:
+    name: spring-cloud-config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/YearningLife/spring-cloud.git #配置文件所在仓库
+          default-label: dev #配置文件分支
+          search-paths: config  #配置文件所在根目录
+          # 仓库为公开使用, 因此不需要用户名和密码,设为空即可
+#          username:
+#          password:
+          # 参考: https://stackoverflow.com/questions/63191584/spring-cloud-config-server-multiplejgitenvironmentrepository-could-not-fetch
+          refresh-rate: 60 #配置文件刷新频率
+          clone-on-start: true #启动时克隆配置文件
+          skip-ssl-validation: true #跳过ssl验证
+#          控制台报错: cannot open git-upload-pack, 配置本地代理,参考: https://github.com/spring-cloud/spring-cloud-config/issues/2048
+          proxy: #代理
+            http:
+              host: localhost
+              port: 7890
+#eureka配置相关
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+
+# 指定hystrix的配置文件
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  #配置暴露全部的监控接口
+      # 自定义配置暴露的监控接口,默认为 /actuator
+  #      base-path: /
+  endpoint:
+    health:
+      enabled: true
+      show-details: always #配置健康接口显示详细信息
+
+#  http://host:port/actuator/info 的访问信息
+info:
+  name: ${spring.application.name}
+  version: 1.0-SNAPSHOT
+  port: ${server.port}

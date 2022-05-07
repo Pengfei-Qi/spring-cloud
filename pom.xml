@@ -21,6 +21,7 @@
         <module>spring-cloud-provider-company-8003</module>
         <module>spring-cloud-consumer-feign-81</module>
         <module>spring-cloud-dashboard</module>
+        <module>spring-cloud-config-server</module>
     </modules>
 
     <properties>
