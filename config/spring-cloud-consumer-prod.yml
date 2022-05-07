@@ -3,4 +3,4 @@ data:
   user:
     username: test prod user
     password: 222222222222222222
-    tips:  '请使用 [生产] 分支账号登录'
+    tips:  "请使用 [生产] 分支账号登录"
