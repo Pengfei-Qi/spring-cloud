@@ -3,4 +3,4 @@ data:
   user:
     username: test dev user
     password: 111111111111111111
-    tips:  "请使用 [开发] 分支账号登录"
+    tips: "请使用 [开发] 分支账号登录"
