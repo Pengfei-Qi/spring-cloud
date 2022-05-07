@@ -15,7 +15,7 @@ spring:
 #          username:
 #          password:
           # 参考: https://stackoverflow.com/questions/63191584/spring-cloud-config-server-multiplejgitenvironmentrepository-could-not-fetch
-          refresh-rate: 60 #配置文件刷新频率
+          refresh-rate: 5 #配置文件刷新频率,例如: 5s 刷新一次
           clone-on-start: true #启动时克隆配置文件
           skip-ssl-validation: true #跳过ssl验证
 #          控制台报错: cannot open git-upload-pack, 配置本地代理,参考: https://github.com/spring-cloud/spring-cloud-config/issues/2048
