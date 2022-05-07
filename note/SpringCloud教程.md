@@ -3067,11 +3067,371 @@ d. `注意事项`
 
      
 
+## 六. spring-cloud config 配置管理工具包
+
+> 参考链接: [Spring Cloud Config ](https://www.cnblogs.com/fengzheng/p/11242128.html)
+
+### 6.1 创建服务端
+
+> 新建项目: spring-cloud-config-server , 并注册到 eureka中
+
+#### 6.1.1 pom文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>springCloud</artifactId>
+        <groupId>org.fei</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>spring-cloud-config-server</artifactId>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- spring cloud config 服务端包 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-config-server</artifactId>
+        </dependency>
+
+        <!-- eureka client 端包 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <!--actuator 监控面板-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>
+```
+
+#### 6.1.2 application.yml 文件
+
+```yaml
+server:
+  port: 8010
+
+spring:
+  application:
+    name: spring-cloud-config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/YearningLife/spring-cloud.git #配置文件所在仓库
+          default-label: dev #配置文件分支
+          search-paths: config  #配置文件所在根目录
+          # 仓库为公开使用, 因此不需要用户名和密码,设为空即可
+#          username:
+#          password:
+          # 参考: https://stackoverflow.com/questions/63191584/spring-cloud-config-server-multiplejgitenvironmentrepository-could-not-fetch
+          refresh-rate: 5 #配置文件刷新频率,例如: 5s 刷新一次
+          clone-on-start: true #启动时克隆配置文件
+          skip-ssl-validation: true #跳过ssl验证
+#          控制台报错: cannot open git-upload-pack, 配置本地代理,参考: https://github.com/spring-cloud/spring-cloud-config/issues/2048
+          proxy: #代理
+            http:
+              host: localhost
+              port: 7890
+#eureka配置相关
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+
+# 指定hystrix的配置文件
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  #配置暴露全部的监控接口
+      # 自定义配置暴露的监控接口,默认为 /actuator
+  #      base-path: /
+  endpoint:
+    health:
+      enabled: true
+      show-details: always #配置健康接口显示详细信息
+
+#  http://host:port/actuator/info 的访问信息
+info:
+  name: ${spring.application.name}
+  version: 1.0-SNAPSHOT
+  port: ${server.port}
+```
+
+#### 6.1.3 创建主启动类
+
+```java
+package com.fei.springcloud;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.config.server.EnableConfigServer;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+
+/**
+ * @description: spring cloud config server 启动类
+ * @author: qpf
+ * @date: 2022/5/7
+ * @version: 1.0
+ */
+@SpringBootApplication
+@EnableConfigServer
+@EnableEurekaClient
+public class CloudConfigServerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(CloudConfigServerApplication.class, args);
+    }
+}
+```
+
+### 6.2 创建客户端
+
+> 修改项目: spring-cloud-consumer-feign-81,用作示例, 其它项目需要添加时, 用法相同
+
+#### 6.2.1 添加依赖
+
+```xml
+        <!--spring cloud config 依赖-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+
+```
+
+#### 6.2.2 创建 bootstrap.yml 文件
+
+> 1. eureka配置需要放在 bootstrap.yml 
+> 2. 参考链接: [bootstrap.yml比application.yml优先级高 ](https://www.cnblogs.com/youcong/p/13939466.html)
+>
+> 
+
+```yaml
+spring:
+  profiles:
+    active: prod
+
+# bootstrap.yml 比 application.yml 先启动, 所以需要在 bootstrap.yml 中配置 eureka服务器的信息
+
+#eureka配置相关
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+
+---
+spring:
+  profiles: prod
+  cloud:
+    config:
+      label: dev #指定远程仓库分支
+      profile: prod #指定版本 本例中建立了dev 和 prod两个版本
+      discovery:
+        enabled: true
+        service-id: spring-cloud-config-server
+
+
+---
+spring:
+  profiles: dev
+  cloud:
+    config:
+      label: dev  #指定远程仓库分支
+      profile: dev   #指定版本 本例中建立了dev 和 prod两个版本
+      discovery:
+        enabled: true  # 开启
+        service-id: spring-cloud-config-server # 指定配置中心服务端的server-id
+
+```
+
+#### 6.2.3 application.yml文件
+
+> info : 仅涉及变动的部分
+
+```yaml
+#eureka配置相关
+#customize:
+#  eureka:
+#    host:
+#      host1: eureka-server
+#      host2: eureka-server2
+#      host3: eureka-server3
+#    port:
+#      port1: 7001
+#      port2: 7002
+#      port3: 7003
+
+##eureka配置相关
+#eureka:
+#  instance:
+#    hostname: localhost
+#  client:
+#    # 向服务端注册自己
+#    register-with-eureka: true
+#    # 从Eureka Server获取注册的服务信息
+#    fetch-registry: true
+#    service-url:
+#      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka,http://${customize.eureka.host.host3}:${customize.eureka.port.port3}/eureka
+
+# 远程仓库返回的数据模型
+data:
+  env: NaN
+  user:
+    username: NaN
+    password: NaN
+    tips: 'NaN'
+
+#  http://host:port/actuator/info 的访问信息
+info:
+  name: ${spring.application.name}
+  version: 1.0-SNAPSHOT
+  port: 8081
+  config-server:
+    id: spring-cloud-config-server
+    port: 8010
+    # 返回的数据模型
+    model:
+      url:
+        - http://localhost:8010/${spring.application.name}/dev/master
+        - http://localhost:8010/${spring.application.name}/prod
+        - http://localhost:8010/${spring.application.name}-dev.yml
+        - http://localhost:8010/${spring.application.name}-prod.yml
+        - http://localhost:8010/master/${spring.application.name}-prod.yml
+```
+
+#### 6.2.4  添加映射对象
+
+> info: 用作测试
+
+```java
+package com.fei.springcloud.vo;
+
+import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Component;
+
+/**
+ * @description: 映射 config 目录下的配置字段
+ *                  例如: spring-cloud-consumer-dev.yml 里面的内容
+ * @author: qpf
+ * @date: 2022/5/7
+ * @version: 1.0
+ */
+
+@Data
+@Component
+@PropertySource(encoding = "UTF-8", value = {"classpath:application.yml"})
+public class GitConfig {
+
+    @Value("${data.env}")
+    private String env;
+
+    @Value("${data.user.username}")
+    private String username;
+
+    @Value("${data.user.password}")
+    private String password;
+
+    @Value("${data.user.tips}")
+    private String tips;
+
+}
+```
+
+#### 6.2.5 添加controller
+
+> info: 用作测试
+
+```java
+package com.fei.springcloud.controller;
+
+import com.fei.springcloud.vo.GitConfig;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * @description: 用于查询远程git配置信息
+ * @author: qpf
+ * @date: 2022/5/7
+ * @version: 1.0
+ */
+@RestController
+@RefreshScope
+public class GitController {
+
+    @Autowired
+    private GitConfig gitConfig;
+
+    @GetMapping(value = "show")
+    public Object show(){
+        return gitConfig;
+    }
+
+}
+```
 
 
 
+## 七. zuul 动态 路由
 
-
+## 八. spring-cloud bus 事件/消息总线
 
 
 
