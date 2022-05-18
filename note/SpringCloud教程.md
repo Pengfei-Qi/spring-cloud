@@ -3431,6 +3431,267 @@ public class GitController {
 
 ## 七. zuul 动态 路由
 
+> 参考链接-1: [入门参考](https://juejin.cn/post/6844904055781720078)
+>
+> 参考链接-2: [官方文档](https://www.springcloud.cc/spring-cloud-greenwich.html#_router_and_filter_zuul)
+>
+> 参考链接-3 : [zuul参考文档.重点](https://enfangzhong.github.io/2019/12/12/Spring Cloud快速开发入门第02篇/#3-Zuul网关)
+
+### 7.1 route配置
+
+1. 第一种
+
+   ```yaml
+   zuul:
+     ignored-services: '*'
+     routes:
+        server-provider:   #配置服注册在Eureka的服务名称，指的是服务中spring.application.name的配置
+            #将/server-provider/开头的都转发到服务名为server-provider的服务上，
+         path:   /server-provider/*  
+   ```
+
+2. 第二种
+
+   ```yaml
+   zuul:
+     ignored-services: '*'
+     routes:
+        server-a:   #名称随便起
+            #将/server-provider/开头的都转发到服务名为server-provider的服务上，
+         path:   /server-provider/*  
+          #配置服注册在Eureka的服务名称，指的是服务中spring.application.name的配置
+         serviceId:  server-provider  
+   ```
+
+3. 第三种
+
+   ```yaml
+   zuul:
+     ignored-services: '*'
+     routes:
+        server-b:   #名称随便起
+            #将/server-provider/开头的都转发到url为 http://localhost:5168/  #的服务上，
+         path:   /server-provider/*  
+          #配置服注册在Eureka的服务名称，指的是服务中spring.application.name的配置
+         url:  http://localhost:5168/  #不通过Eureka
+   ```
+
+### 7.2 创建新项目
+
+> info: 
+>
+> 1. 项目名称为: spring-cloud-gateway-zuul
+> 2. 将项目注册到: eureka,实现对应用的负载均衡调用
+> 3. 使用ZuulFilter 实现过滤器操作, 例如登录时的权限认证操作
+
+#### 7.2.1 pom 文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>springCloud</artifactId>
+        <groupId>org.fei</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>spring-cloud-gateway-zuul</artifactId>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-zuul</artifactId>
+        </dependency>
+
+    </dependencies>
+
+</project>
+```
+
+#### 7.2.2 yaml文件
+
+```yaml
+server:
+  port: 8011
+
+spring:
+  application:
+    name: spring-cloud-gateway-zuul
+
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka
+
+# 路由相关 参考: https://juejin.cn/post/6844904055781720078
+#zuul:
+##  zuul.ignoredServices=* 表示禁用默认路由，只认我们自己配置的路由.
+#  ignored-services: '*'
+#  routes:
+#    server-test: #名称随便起
+#      #将/users/开头的都转发到url为 https://www.bing.com/?mkt=zh-CN  #的服务上，
+#      path: /users/**
+#      #配置服注册在Eureka的服务名称，指的是服务中spring.application.name的配置
+##      url: https://www.bing.com/?mkt=zh-CN  #不通过Eureka
+#      serviceId: spring-cloud-provider
+
+# 简化写法
+# 参考: https://enfangzhong.github.io/2019/12/12/Spring%20Cloud%E5%BF%AB%E9%80%9F%E5%BC%80%E5%8F%91%E5%85%A5%E9%97%A8%E7%AC%AC02%E7%AF%87/#3-Zuul%E7%BD%91%E5%85%B3
+zuul:
+  routes:
+    spring-cloud-provider: /provider/**
+    spring-cloud-consumer: /consumer/**
+  prefix: /api
+
+# 设置服务熔断时间
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 2000 # 设置hystrix的超时时间为6000ms
+```
+
+#### 7.2.3 主程序
+
+```java
+package com.fei.springcloud;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.cloud.client.SpringCloudApplication;
+import org.springframework.cloud.netflix.zuul.EnableZuulProxy;
+
+/**
+ * @description: 测试zuul网关
+ * @author: qpf
+ * @date: 2022/5/9
+ * @version: 1.0
+ */
+@EnableZuulProxy
+@SpringCloudApplication
+public class GatewayZuulApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(GatewayZuulApplication.class, args);
+    }
+}
+```
+
+#### 7.2.4 过滤器
+
+> info: 
+>
+> 1. 配置过滤器`前`, 调用接口为: http://localhost:8011/api/provider/cloud/all 
+> 2. 配置过滤器`后`, 调用接口为: http://localhost:8011/api/provider/cloud/all?access-token=zhangsan
+
+```java
+package com.fei.springcloud.filter;
+
+import com.netflix.zuul.ZuulFilter;
+import com.netflix.zuul.context.RequestContext;
+import com.netflix.zuul.exception.ZuulException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpStatus;
+import org.springframework.stereotype.Component;
+
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * @description: 定义过滤器类
+ * @author: qpf
+ * @date: 2022/5/18
+ * @version: 1.0
+ */
+@Component
+public class LoginFilter extends ZuulFilter {
+    /**
+     * 过滤器类型，前置过滤器
+     * @return
+     */
+    @Override
+    public String filterType() {
+        return "pre";
+    }
+
+    /**
+     * 过滤器的执行顺序
+     * @return
+     */
+    @Override
+    public int filterOrder() {
+        return 1;
+    }
+
+    /**
+     * 该过滤器是否生效
+     * @return
+     */
+    @Override
+    public boolean shouldFilter() {
+        return true;
+    }
+
+    /**
+     * 登陆校验逻辑
+     * @return
+     * @throws ZuulException
+     */
+    @Override
+    public Object run() throws ZuulException {
+        // 获取zuul提供的上下文对象
+        RequestContext context = RequestContext.getCurrentContext();
+        // 从上下文对象中获取请求对象
+        HttpServletRequest request = context.getRequest();
+        // 获取token信息
+        String token = request.getParameter("access-token");
+        // 判断
+        if (StringUtils.isBlank(token)) {
+            // 过滤该请求，不对其进行路由
+            context.setSendZuulResponse(false);
+            // 设置响应状态码，401
+            context.setResponseStatusCode(HttpStatus.SC_UNAUTHORIZED);
+            // 设置响应信息
+            context.setResponseBody("{\"status\":\"401\", \"text\":\"request error!\"}");
+        }
+        // 校验通过，把登陆信息放入上下文信息，继续向后执行
+        context.set("token", token);
+        return null;
+    }
+}
+```
+
+
+
 ## 八. spring-cloud bus 事件/消息总线
 
 
