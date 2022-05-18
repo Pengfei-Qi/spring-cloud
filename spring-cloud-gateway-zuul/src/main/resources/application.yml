@@ -1,0 +1,59 @@
+server:
+  port: 8011
+
+spring:
+  application:
+    name: spring-cloud-gateway-zuul
+
+customize:
+  eureka:
+    host:
+      host1: eureka-server
+      host2: eureka-server2
+      host3: eureka-server3
+    port:
+      port1: 7001
+      port2: 7002
+      port3: 7003
+
+#eureka配置相关
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # 向服务端注册自己
+    register-with-eureka: true
+    # 从Eureka Server获取注册的服务信息
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${customize.eureka.host.host1}:${customize.eureka.port.port1}/eureka,http://${customize.eureka.host.host2}:${customize.eureka.port.port2}/eureka
+
+# 路由相关 参考: https://juejin.cn/post/6844904055781720078
+#zuul:
+##  zuul.ignoredServices=* 表示禁用默认路由，只认我们自己配置的路由.
+#  ignored-services: '*'
+#  routes:
+#    server-test: #名称随便起
+#      #将/users/开头的都转发到url为 https://www.bing.com/?mkt=zh-CN  #的服务上，
+#      path: /users/**
+#      #配置服注册在Eureka的服务名称，指的是服务中spring.application.name的配置
+##      url: https://www.bing.com/?mkt=zh-CN  #不通过Eureka
+#      serviceId: spring-cloud-provider
+
+# 简化写法
+# 参考: https://enfangzhong.github.io/2019/12/12/Spring%20Cloud%E5%BF%AB%E9%80%9F%E5%BC%80%E5%8F%91%E5%85%A5%E9%97%A8%E7%AC%AC02%E7%AF%87/#3-Zuul%E7%BD%91%E5%85%B3
+zuul:
+  routes:
+    spring-cloud-provider: /provider/**
+    spring-cloud-consumer: /consumer/**
+  prefix: /api
+
+# 设置服务熔断时间
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 2000 # 设置hystrix的超时时间为6000ms
+

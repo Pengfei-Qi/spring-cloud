@@ -22,6 +22,7 @@
         <module>spring-cloud-consumer-feign-81</module>
         <module>spring-cloud-dashboard</module>
         <module>spring-cloud-config-server</module>
+        <module>spring-cloud-gateway-zuul</module>
     </modules>
 
     <properties>
@@ -163,6 +164,7 @@
                 <artifactId>spring-boot-starter-actuator</artifactId>
                 <version>${springboot.version}</version>
             </dependency>
+
         </dependencies>
     </dependencyManagement>
 </project>
